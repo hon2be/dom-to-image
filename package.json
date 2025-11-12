@@ -1,27 +1,35 @@
 {
     "name": "dom-to-image",
-    "version": "2.6.0",
-    "description": "Generates an image from a DOM node using HTML5 canvas and SVG",
+    "version": "3.0.0",
+    "description": "Generates an image from a DOM node using HTML5 canvas and SVG. With Safari fallback to Node.js/Puppeteer for high-quality rendering!",
     "main": "src/dom-to-image.js",
-    "dependencies": {},
     "devDependencies": {
-        "chai": "^2.2.0",
-        "grunt": "~0.4.5",
-        "grunt-cli": "^1.2.0",
-        "grunt-contrib-jshint": "^0.11.2",
-        "grunt-contrib-uglify": "^0.9.1",
-        "grunt-contrib-watch": "^0.6.1",
-        "grunt-karma": "^1.0.0",
-        "karma": "^0.13.22",
+        "chai": "^4.3.7",
+        "express": "^4.18.2",
+        "grunt": "~1.3.0",
+        "grunt-cli": "^1.4.3",
+        "grunt-contrib-jshint": "^3.2.0",
+        "grunt-contrib-uglify": "^5.0.0",
+        "grunt-contrib-watch": "^1.1.0",
+        "grunt-karma": "^4.0.0",
+        "karma": "^6.4.2",
         "karma-chai": "^0.1.0",
-        "karma-chrome-launcher": "^0.1.8",
-        "karma-firefox-launcher": "^0.1.4",
-        "karma-mocha": "^0.1.10",
-        "karma-mocha-reporter": "^1.3.0",
-        "mocha": "^2.2.4"
+        "karma-chrome-launcher": "^3.2.0",
+        "karma-firefox-launcher": "^2.1.2",
+        "karma-mocha": "^2.0.1",
+        "karma-mocha-reporter": "^2.2.5",
+        "mocha": "^10.2.0",
+        "multer": "^1.4.5-lts.1",
+        "puppeteer": "^24.29.1"
+    },
+    "optionalDependencies": {
+        "puppeteer": "^24.15.0"
     },
     "scripts": {
-        "test": "./node_modules/.bin/grunt test"
+        "test": "./node_modules/.bin/grunt test",
+        "example:render": "node examples/node-renderer.js",
+        "example:server": "node examples/fallback-server.js",
+        "start-server": "npm install puppeteer && npm run example:server"
     },
     "repository": {
         "type": "git",
@@ -34,12 +42,22 @@
         "render",
         "html",
         "canvas",
-        "svg"
+        "svg",
+        "puppeteer",
+        "nodejs",
+        "screenshot",
+        "fullpage"
     ],
     "author": "Anatolii Saienko <anatoly.sayenko@gmail.com>",
+    "contributors": [
+        "Your Name <your.email@example.com>"
+    ],
     "license": "MIT",
     "bugs": {
         "url": "https://github.com/tsayen/dom-to-image/issues"
     },
-    "homepage": "https://github.com/tsayen/dom-to-image#readme"
+    "homepage": "https://github.com/tsayen/dom-to-image#readme",
+    "engines": {
+        "node": ">=18.0.0"
+    }
 }

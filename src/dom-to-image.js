@@ -100,12 +100,103 @@
     }
 
     /**
+     * Detect Safari
+     * @private
+     */
+    function isSafari() {
+        var userAgent = navigator.userAgent;
+        return /Safari/.test(userAgent) && 
+               !/Chrome|Firefox|Edge|OPR/.test(userAgent);
+    }
+
+    /**
+     * Convert SVG Data URI → SVG string
+     * @private
+     */
+    function svgDataUriToString(svgDataUri) {
+        if (!svgDataUri || svgDataUri.indexOf(',') === -1) {
+            return svgDataUri;
+        }
+        var commaIndex = svgDataUri.indexOf(',');
+        var dataPortion = svgDataUri.slice(commaIndex + 1);
+        if (!svgDataUri.startsWith('data:image/svg+xml')) {
+            return dataPortion;
+        }
+        try {
+            return decodeURIComponent(dataPortion);
+        } catch (e) {
+            return dataPortion;
+        }
+    }
+
+    /**
      * @param {Node} node - The DOM Node object to render
      * @param {Object} options - Rendering options, @see {@link toSvg}
+     *                 For Safari fallback: options.fallbackServer, options.deviceScaleFactor
      * @return {Promise} - A promise that is fulfilled with a PNG image data URL
      * */
-    function toPng(node, options) {
-        return draw(node, options || {})
+    async function toPng(node, options) {
+        options = options || {};
+        try {
+            // 🍎 Use fallback server only on Safari
+            if (isSafari() && options.fallbackServer !== false) {
+                const svg = await toSvg(node, options);
+                // 데이터 URL 형식: "data:image/svg+xml;charset=utf-8,<svg>...</svg>"
+                const dataUrlPrefix = 'data:image/svg+xml;charset=utf-8,';
+                var svgString;
+                if(svg.startsWith(dataUrlPrefix)) {
+                    // 데이터 URL prefix 제거
+                    const encodedSvg = svg.substring(dataUrlPrefix.length);
+                    // URL 디코딩
+                    svgString = encodedSvg;
+                } else {
+                    // 이미 일반 문자열인 경우
+                    svgString = svg;
+                }
+                // 줄바꿈 문자(\r, \n, \r\n)만 제거 후 디코딩 처리
+                svgString = svgString.replace(/(\r\n|\n|\r)/g, '');
+                svgString = svgString
+                .replace(/%0A/g, '\n')  // URL 인코딩된 줄바꿈을 실제 줄바꿈으로
+                .replace(/%23/g, '#')  // URL 인코딩된 #을 실제 #으로
+                .trim();  // 앞뒤 공백 제거
+                // FormData를 사용하여 멀티파트로 전송
+                const formData = new FormData();
+                const svgFile = new File([svgString], 'image.svg', { type: 'image/svg+xml' });
+                formData.append('svg', svgFile);
+                const capture_url = options.fallbackServer;
+                const response = await fetch(capture_url, {
+                    method: 'post', 
+                    body: formData
+                });
+                if(!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const blob = await response.blob();
+                const url = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        if(typeof reader.result === 'string') {
+                            resolve(reader.result);
+                        } else {
+                            reject(new Error('Failed to convert blob to data URL'));
+                        }
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                return url;
+            }
+            // Other browsers: use existing Canvas logic
+            return draw(node, options)
+                .then(function (canvas) {
+                    return canvas.toDataURL('image/png', options.quality || 1.0);
+                });
+        }catch(e) {
+            throw e;
+        }
+        
+        // Other browsers: use existing Canvas logic
+        return draw(node, options)
             .then(function (canvas) {
                 return canvas.toDataURL();
             });
@@ -114,14 +205,70 @@
     /**
      * @param {Node} node - The DOM Node object to render
      * @param {Object} options - Rendering options, @see {@link toSvg}
+     *                 For Safari fallback: options.fallbackServer, options.deviceScaleFactor, options.quality
      * @return {Promise} - A promise that is fulfilled with a JPEG image data URL
      * */
-    function toJpeg(node, options) {
+    async function toJpeg(node, options) {
         options = options || {};
-        return draw(node, options)
-            .then(function (canvas) {
-                return canvas.toDataURL('image/jpeg', options.quality || 1.0);
-            });
+        try {
+            // 🍎 Use fallback server only on Safari
+            if (isSafari() && options.fallbackServer !== false) {
+                const svg = await toSvg(node, options);
+                // 데이터 URL 형식: "data:image/svg+xml;charset=utf-8,<svg>...</svg>"
+                const dataUrlPrefix = 'data:image/svg+xml;charset=utf-8,';
+                var svgString;
+                if(svg.startsWith(dataUrlPrefix)) {
+                    // 데이터 URL prefix 제거
+                    const encodedSvg = svg.substring(dataUrlPrefix.length);
+                    // URL 디코딩
+                    svgString = encodedSvg;
+                } else {
+                    // 이미 일반 문자열인 경우
+                    svgString = svg;
+                }
+                // 줄바꿈 문자(\r, \n, \r\n)만 제거 후 디코딩 처리
+                svgString = svgString.replace(/(\r\n|\n|\r)/g, '');
+
+
+                svgString = svgString
+                .replace(/%0A/g, '\n')  // URL 인코딩된 줄바꿈을 실제 줄바꿈으로
+                .replace(/%23/g, '#')  // URL 인코딩된 #을 실제 #으로
+                .trim();  // 앞뒤 공백 제거
+                // FormData를 사용하여 멀티파트로 전송
+                const formData = new FormData();
+                const svgFile = new File([svgString], 'image.svg', { type: 'image/svg+xml' });
+                formData.append('svg', svgFile);
+                const capture_url = options.fallbackServer;
+                const response = await fetch(capture_url, {
+                    method: 'post', 
+                    body: formData
+                });
+                if(!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const blob = await response.blob();
+                const url = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        if(typeof reader.result === 'string') {
+                            resolve(reader.result);
+                        } else {
+                            reject(new Error('Failed to convert blob to data URL'));
+                        }
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                return url;
+            }
+            // Other browsers: use existing Canvas logic
+            return draw(node, options)
+                .then(function (canvas) {
+                    return canvas.toDataURL('image/png', options.quality || 1.0);
+                });
+        }catch(e) {
+            throw(e);
+        }
     }
 
     /**
